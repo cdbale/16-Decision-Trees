@@ -1,0 +1,207 @@
+---
+title: "Exercise 17"
+author: "Marc Dotson"
+format: docx
+---
+
+1. Use `case_when()` to combine the `own` and `shopping` segments into a single category.
+2. Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
+3. Try and tune the decision tree hyperparameters to improve its predictive fit.
+4. Render the Quarto document into Word and upload to Canvas.
+
+**Five points total, one point each for:**
+
+- **Using `case_when()` to create a binary outcome.**
+- **Build a recipe using cleaning attitudes and demographics.**
+- **Use a workflow to run a logistic regression and a decision tree and compare accuracy.**
+- **Try and improve predictive fit by tuning the hyperparameters on the decision tree.**
+- **Submitting a rendered Word document.**
+
+## Data Prep and Feature Engineering
+
+We are encoding `segment` as two categories so that logistic regression becomes an option again.
+
+```{r}
+# Load packages.
+library(tidyverse)
+library(tidymodels)
+
+# Set a seed.
+set.seed(42)
+
+# Import data.
+roomba_survey <- read_csv(here::here("Data", "roomba_survey.csv"))
+
+# Wrangle S1 into segment.
+roomba_survey <- roomba_survey |> 
+  rename(segment = S1) |> 
+  mutate(
+    segment = case_when(
+      segment == 1 ~ "own or shopping",
+      segment == 3 ~ "own or shopping",
+      segment == 4 ~ "considering"
+    ),
+    segment = factor(segment)
+  )
+
+# Split data based on segment.
+roomba_split <- initial_split(roomba_survey, prop = 0.75, strata = segment)
+
+# Feature engineering.
+roomba_recipe <- training(roomba_split) |>
+  recipe(
+    segment ~ CleaningAttitudes_1 + CleaningAttitudes_2 + CleaningAttitudes_3 + 
+      CleaningAttitudes_4 + CleaningAttitudes_5 + CleaningAttitudes_6 + 
+      CleaningAttitudes_7 + CleaningAttitudes_8 + CleaningAttitudes_9 + 
+      CleaningAttitudes_10 + CleaningAttitudes_11 +
+      D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus
+  ) |>
+  step_dummy(all_nominal(), -all_outcomes())
+```
+
+## Logistic Regression and Decision Trees
+
+We'll create a single workflow and then update it for subsequent models.
+
+```{r}
+# Logistic regression.
+roomba_lr <- logistic_reg() |> 
+  set_engine(engine = "glm")
+
+# Decision tree.
+roomba_dt <- decision_tree() |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+# Create a workflow for lr.
+roomba_wf_lr <- workflow() |> 
+  add_recipe(roomba_recipe) |> 
+  add_model(roomba_lr)
+
+# Create a workflow for dt.
+roomba_wf_dt <- roomba_wf_lr |> 
+  update_model(roomba_dt)
+
+# Fit models.
+fit_wf_lr <- fit(roomba_wf_lr, data = training(roomba_split))
+fit_wf_dt <- fit(roomba_wf_dt, data = training(roomba_split))
+
+# Compare model accuracy.
+model_fit <- bind_cols(
+  tibble(model = c("lr", "dt")),
+  bind_rows(
+    fit_wf_lr |> 
+      predict(new_data = testing(roomba_split)) |>
+      bind_cols(testing(roomba_split)) |>
+      accuracy(truth = segment, estimate = .pred_class),
+    fit_wf_dt |> 
+      predict(new_data = testing(roomba_split)) |>
+      bind_cols(testing(roomba_split)) |>
+      accuracy(truth = segment, estimate = .pred_class),
+  )
+)
+
+model_fit
+```
+
+With my initial split, logistic regression performs better! Let's look at the confusion matrices.
+
+```{r}
+# Compute a confusion matrix.
+fit_wf_lr |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+
+# Compute a confusion matrix.
+fit_wf_dt |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+```
+
+Each model is providing *nearly* the same predictions.
+
+## Hyperparameter Tuning
+
+Let's see if we can improve the model fit by tuning the decision tree hyperparameters.
+
+```{r}
+# Decision tree hyperparameter tuning.
+roomba_dt_02 <- decision_tree(tree_depth = 5) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+roomba_dt_03 <- decision_tree(tree_depth = 15) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+roomba_dt_04 <- decision_tree(tree_depth = 25) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+roomba_dt_05 <- decision_tree(min_n = 5) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+roomba_dt_06 <- decision_tree(min_n = 15) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+# Pipe a modified workflow right into fit.
+fit_wf_dt_02 <- roomba_wf_dt |> 
+  update_model(roomba_dt_02) |> 
+  fit(data = training(roomba_split))
+
+fit_wf_dt_03 <- roomba_wf_dt |> 
+  update_model(roomba_dt_03) |> 
+  fit(data = training(roomba_split))
+
+fit_wf_dt_04 <- roomba_wf_dt |> 
+  update_model(roomba_dt_04) |> 
+  fit(data = training(roomba_split))
+
+fit_wf_dt_05 <- roomba_wf_dt |> 
+  update_model(roomba_dt_05) |> 
+  fit(data = training(roomba_split))
+
+fit_wf_dt_06 <- roomba_wf_dt |> 
+  update_model(roomba_dt_06) |> 
+  fit(data = training(roomba_split))
+
+# Compare model accuracy.
+bind_rows(
+  model_fit,
+  bind_cols(
+    tibble(model = c(
+      "tree_depth = 5", "tree_depth = 10", "tree_depth = 15",
+      "min_n = 5", "min_n = 15"
+    )),
+    bind_rows(
+      fit_wf_dt_02 |> 
+        predict(new_data = testing(roomba_split)) |>
+        bind_cols(testing(roomba_split)) |>
+        accuracy(truth = segment, estimate = .pred_class),
+      fit_wf_dt_03 |> 
+        predict(new_data = testing(roomba_split)) |>
+        bind_cols(testing(roomba_split)) |>
+        accuracy(truth = segment, estimate = .pred_class),
+      fit_wf_dt_04 |> 
+        predict(new_data = testing(roomba_split)) |>
+        bind_cols(testing(roomba_split)) |>
+        accuracy(truth = segment, estimate = .pred_class),
+      fit_wf_dt_05 |> 
+        predict(new_data = testing(roomba_split)) |>
+        bind_cols(testing(roomba_split)) |>
+        accuracy(truth = segment, estimate = .pred_class),
+      fit_wf_dt_06 |> 
+        predict(new_data = testing(roomba_split)) |>
+        bind_cols(testing(roomba_split)) |>
+        accuracy(truth = segment, estimate = .pred_class),
+    )
+  )
+)
+```
+
+I can't find improved predictive fit by tuning the hyperparameters for this data, but all of this screams out for some sort of for loop or function -- maybe you've even made one!
+
