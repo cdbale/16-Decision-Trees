@@ -20,7 +20,7 @@
       // Slide settings
       settings: {
                 title: 'Decision Trees',
-                        subtitle: 'MKTG 411 Marketing Analytics',
+                        subtitle: 'MCB Consulting Group (MKTG 411)',
                 useBuilds: true,
         usePrettify: true,
         enableSlideAreas: true,
@@ -3117,8 +3117,9 @@ span.underline{text-decoration: underline;}
 div.column{display: inline-block; vertical-align: top; width: 50%;}
 div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
 ul.task-list{list-style: none;}
+html { -webkit-text-size-adjust: 100%; }
 pre > code.sourceCode { white-space: pre; position: relative; }
-pre > code.sourceCode > span { line-height: 1.25; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
 pre > code.sourceCode > span:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode > span { color: inherit; text-decoration: inherit; }
@@ -3129,7 +3130,7 @@ div.sourceCode { overflow: auto; }
 }
 @media print {
 pre > code.sourceCode { white-space: pre-wrap; }
-pre > code.sourceCode > span { display: inline-block; text-indent: -5em; padding-left: 5em; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
 }
 pre.numberSource code
 { counter-reset: source-line 0; }
@@ -3227,7 +3228,7 @@ background-size: 100% 100%;
 
 <p>We’ve already spent time with <em>supervised learning</em>, a model with an outcome variable. Specifically, we dealt with <em>regression</em> and <em>classification</em>.</p>
 
-<p>We used supervised learning for <em>inference</em> (i.e., to understand the underlying data generating process), but now we care about <em>prediction</em>. So instead of letting our theories about the data generating process drive our selection of variables and worrying about whether our coefficient estimates are accurate, we’ll need to run a <em>lot</em> of models and find which one is best for prediction.</p>
+<p>We used supervised learning for <em>inference</em> (i.e., to understand the underlying data generating process), but now we care about <em>prediction</em>. So instead of letting our beliefs and hypotheses about our story drive our selection of variables and worrying about whether our coefficient estimates are accurate, we’ll need to run a <em>lot</em> of models and find which one is best for prediction.</p>
 
 </article></slide><slide class=""><hgroup><h2>Import Data</h2></hgroup><article  id="import-data">
 
@@ -3235,16 +3236,13 @@ background-size: 100% 100%;
 
 <pre class = 'prettyprint lang-r'># Load packages.
 library(tidyverse)
-library(tidymodels)
-
-# Set a simulation seed.
-set.seed(42)</pre>
+library(tidymodels)</pre>
 
 </article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
 
 <p>In this unit, we’ll be examining survey data from iRobot (Roomba).</p>
 
-<pre class = 'prettyprint lang-r'>roomba_survey &lt;- read_csv(here::here(&quot;Data&quot;, &quot;roomba_survey.csv&quot;))
+<pre class = 'prettyprint lang-r'>roomba_survey &lt;- read_csv(&quot;roomba_survey.csv&quot;)
 
 roomba_survey</pre>
 
@@ -3311,7 +3309,9 @@ roomba_survey &lt;- roomba_survey |&gt;
 
 <p>Once again, one of the first things we need to do is split the data. To be sure that we don’t end up with testing data that doesn’t include one of the categories in our outcome variable, use the <code>strata</code> argument.</p>
 
-<pre class = 'prettyprint lang-r'># Split data based on segment.
+<pre class = 'prettyprint lang-r'>set.seed(42)
+
+# Split data based on segment.
 roomba_split &lt;- initial_split(roomba_survey, prop = 0.75, strata = segment)</pre>
 
 <p>How could you check and see that this worked? (Hint: when using the <code>strata</code> argument, the splitting proportion is applied to each stratum separately).</p>
@@ -3363,19 +3363,23 @@ roomba_model &lt;- decision_tree() |&gt;
   set_engine(engine = &quot;rpart&quot;) |&gt; 
   set_mode(&quot;classification&quot;)</pre>
 
-</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
-
-<p>Without <code>fit()</code>, the set up here is a list of instructions. Where have we seen this before?</p>
-
-<pre class = 'prettyprint lang-r'>roomba_model</pre>
-
-<pre >## Decision Tree Model Specification (classification)
-## 
-## Computational engine: rpart</pre>
-
 </article></slide><slide class=""><hgroup><h2>Workflows</h2></hgroup><article  id="workflows">
 
-<p>A <strong>workflow</strong> is a tidymodels object that combines the instructions of a recipe and a model.</p>
+<p>We’re going to introduce another concept to help with training and evaluating our models: <strong>workflows</strong>.</p>
+
+<p>Workflows combine the following:</p>
+
+<ul>
+<li>Our Data</li>
+<li>Pre-processing/feature engineering (recipes)</li>
+<li>Our Model</li>
+</ul>
+
+<p>Today, we’ll see how to create a workflow that simplifies the data pre-processing, model fitting, and prediction tasks.</p>
+
+</article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
+
+<p>A <strong>workflow</strong> is a tidymodels object that combines the instructions of a recipe and a model. We’ll start with a simple workflow that only includes our <strong>formula</strong> (which outlines the relationship between our outcome and explanatory variables) and our <strong>model</strong> - the decision tree we defined previously.</p>
 
 <pre class = 'prettyprint lang-r'># Create a workflow.
 roomba_wf_01 &lt;- workflow() |&gt; 
@@ -3435,7 +3439,7 @@ wf_fit_01</pre>
 
 </article></slide><slide class=""><hgroup><h2>Evaluate Predictive Fit</h2></hgroup><article  id="evaluate-predictive-fit">
 
-<p>Similarly, we can evaluate predictive fit using the fitted workflow. For classification, there are a lot of possible measures of predictive fit, but accuracy is a natural one to use.</p>
+<p>We can evaluate predictive fit using the fitted workflow. For classification, there are a lot of possible measures of predictive fit, but accuracy is a natural one to use.</p>
 
 <pre class = 'prettyprint lang-r'># Compute model accuracy.
 wf_fit_01 |&gt; 
@@ -3450,7 +3454,7 @@ wf_fit_01 |&gt;
 
 </article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
 
-<p>We can also compute a confusion matrix.</p>
+<p>We can also compute a confusion matrix. What does this show us?</p>
 
 <pre class = 'prettyprint lang-r'># Compute a confusion matrix.
 wf_fit_01 |&gt;
@@ -3466,20 +3470,20 @@ wf_fit_01 |&gt;
 
 </article></slide><slide class=""><hgroup><h2>Feature Engineering</h2></hgroup><article  id="feature-engineering">
 
-<p>We can certainly do better. What if we included some demographic predictors instead? We’ll still want to dummy code them.</p>
+<p>We can certainly do better. What if we included some demographic predictors instead? We’ll still want to dummy code them. Let’s build a recipe that pre-processes our categorical variables.</p>
 
 <pre class = 'prettyprint lang-r'># Build a recipe.
 roomba_recipe &lt;- training(roomba_split) |&gt;
   recipe(
     segment ~ D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus
   ) |&gt;
-  step_dummy(all_nominal(), -all_outcomes())</pre>
+  step_dummy(all_nominal(), -segment)</pre>
 
-<p>Note that we haven’t used <code>prep()</code> – that’s part of executing the workflow now.</p>
+<p>Note that we haven’t used <code>prep()</code> – that will now be handled in the workflow.</p>
 
 </article></slide><slide class=""><hgroup><h2>Update, Fit, and Evaluate</h2></hgroup><article  id="update-fit-and-evaluate">
 
-<p>We didn’t have a <code>recipe()</code> before, so we had to use <code>add_formula()</code>. Let’s get rid of it and update our workflow with our new recipe.</p>
+<p>To include a recipe in our workflow, we remove the previous <code>formula</code> and add the recipe. <em>Typically</em> we will just add a recipe to our workflow to begin with. We started with the <code>formula</code> for illustrative purposes.</p>
 
 <pre class = 'prettyprint lang-r'># Update the workflow.
 roomba_wf_02 &lt;- roomba_wf_01 |&gt; 
@@ -3572,7 +3576,7 @@ roomba_recipe_full &lt;- training(roomba_split) |&gt;
 
 </article></slide><slide class=""><hgroup><h2>Update the Workflow Again</h2></hgroup><article  id="update-the-workflow-again">
 
-<p>Notice we are updating the recipe this time.</p>
+<p>Create a third workflow that includes our full model. Notice we are updating the recipe this time by using the <code>remove_recipe()</code> function.</p>
 
 <pre class = 'prettyprint lang-r'># Update the workflow.
 roomba_wf_03 &lt;- roomba_wf_02 |&gt; 
@@ -3654,7 +3658,7 @@ wf_fit_03 |&gt;
 
 </article></slide><slide class=""><hgroup><h2>Notes on Growing (Training/Fitting) a Decision Tree</h2></hgroup><article  id="notes-on-growing-trainingfitting-a-decision-tree">
 
-<p>Workflows help with the fact that we’re iterating on a lot of models as we try different predictors and changes to feature engineering. But we haven’t said anything about <em>hyperparameters</em>.</p>
+<p>Workflows help with the fact that we’re iterating on a lot of models as we try different predictors and changes to feature engineering. One of the <em>new</em> aspects of our models that we’ll tweak are called <em>hyperparameters</em>. Think of these as model characteristics that determine how the model fits the data. For decision trees we have</p>
 
 <ul>
 <li><code>tree_depth</code> maximum depth of the tree (default is 30)</li>
@@ -3663,8 +3667,10 @@ wf_fit_03 |&gt;
 
 </article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
 
+<p>We can specify model parameters when we define the model.</p>
+
 <pre class = 'prettyprint lang-r'># Specify the model, engine, and mode.
-roomba_model &lt;- decision_tree(tree_depth = 2) |&gt; 
+roomba_model &lt;- decision_tree(min_n = 5) |&gt; 
   set_engine(engine = &quot;rpart&quot;) |&gt; 
   set_mode(&quot;classification&quot;)
 
@@ -3673,7 +3679,7 @@ roomba_model</pre>
 <pre >## Decision Tree Model Specification (classification)
 ## 
 ## Main Arguments:
-##   tree_depth = 2
+##   min_n = 5
 ## 
 ## Computational engine: rpart</pre>
 
@@ -3698,7 +3704,7 @@ roomba_wf_03</pre>
 ## Decision Tree Model Specification (classification)
 ## 
 ## Main Arguments:
-##   tree_depth = 2
+##   min_n = 5
 ## 
 ## Computational engine: rpart</pre>
 
@@ -3724,7 +3730,54 @@ wf_fit_03</pre>
 ## node), split, n, loss, yval, (yprob)
 ##       * denotes terminal node
 ## 
-## 1) root 248 77 considering (0.6895161 0.1209677 0.1895161) *</pre>
+##   1) root 248 77 considering (0.68951613 0.12096774 0.18951613)  
+##     2) CleaningAttitudes_10&lt; 0.5 115 28 considering (0.75652174 0.10434783 0.13913043)  
+##       4) CleaningAttitudes_9&gt;=0.5 39  3 considering (0.92307692 0.00000000 0.07692308) *
+##       5) CleaningAttitudes_9&lt; 0.5 76 25 considering (0.67105263 0.15789474 0.17105263)  
+##        10) D3Neighborhood&lt; 1.5 13  2 considering (0.84615385 0.07692308 0.07692308) *
+##        11) D3Neighborhood&gt;=1.5 63 23 considering (0.63492063 0.17460317 0.19047619)  
+##          22) CleaningAttitudes_8&lt; 0.5 43 13 considering (0.69767442 0.18604651 0.11627907) *
+##          23) CleaningAttitudes_8&gt;=0.5 20 10 considering (0.50000000 0.15000000 0.35000000)  
+##            46) D2HomeType&gt;=1.5 7  2 considering (0.71428571 0.28571429 0.00000000)  
+##              92) CleaningAttitudes_3&lt; 0.5 5  0 considering (1.00000000 0.00000000 0.00000000) *
+##              93) CleaningAttitudes_3&gt;=0.5 2  0 own (0.00000000 1.00000000 0.00000000) *
+##            47) D2HomeType&lt; 1.5 13  6 shopping (0.38461538 0.07692308 0.53846154)  
+##              94) CleaningAttitudes_1&lt; 0.5 2  1 considering (0.50000000 0.50000000 0.00000000) *
+##              95) CleaningAttitudes_1&gt;=0.5 11  4 shopping (0.36363636 0.00000000 0.63636364)  
+##               190) CleaningAttitudes_6&lt; 0.5 3  1 considering (0.66666667 0.00000000 0.33333333) *
+##               191) CleaningAttitudes_6&gt;=0.5 8  2 shopping (0.25000000 0.00000000 0.75000000) *
+##     3) CleaningAttitudes_10&gt;=0.5 133 49 considering (0.63157895 0.13533835 0.23308271)  
+##       6) CleaningAttitudes_4&lt; 0.5 63 20 considering (0.68253968 0.19047619 0.12698413)  
+##        12) CleaningAttitudes_11&lt; 0.5 61 18 considering (0.70491803 0.19672131 0.09836066)  
+##          24) CleaningAttitudes_9&lt; 0.5 57 15 considering (0.73684211 0.17543860 0.08771930)  
+##            48) D2HomeType&lt; 3.5 54 13 considering (0.75925926 0.14814815 0.09259259)  
+##              96) D3Neighborhood&lt; 2.5 41  7 considering (0.82926829 0.09756098 0.07317073) *
+##              97) D3Neighborhood&gt;=2.5 13  6 considering (0.53846154 0.30769231 0.15384615)  
+##               194) CleaningAttitudes_8&lt; 0.5 6  1 considering (0.83333333 0.00000000 0.16666667) *
+##               195) CleaningAttitudes_8&gt;=0.5 7  3 own (0.28571429 0.57142857 0.14285714) *
+##            49) D2HomeType&gt;=3.5 3  1 own (0.33333333 0.66666667 0.00000000) *
+##          25) CleaningAttitudes_9&gt;=0.5 4  2 own (0.25000000 0.50000000 0.25000000) *
+##        13) CleaningAttitudes_11&gt;=0.5 2  0 shopping (0.00000000 0.00000000 1.00000000) *
+##       7) CleaningAttitudes_4&gt;=0.5 70 29 considering (0.58571429 0.08571429 0.32857143)  
+##        14) D1Gender&lt; 1.5 51 16 considering (0.68627451 0.05882353 0.25490196)  
+##          28) D3Neighborhood&gt;=2.5 8  0 considering (1.00000000 0.00000000 0.00000000) *
+##          29) D3Neighborhood&lt; 2.5 43 16 considering (0.62790698 0.06976744 0.30232558)  
+##            58) CleaningAttitudes_6&gt;=0.5 34 11 considering (0.67647059 0.08823529 0.23529412)  
+##             116) D3Neighborhood&gt;=1.5 27  7 considering (0.74074074 0.03703704 0.22222222) *
+##             117) D3Neighborhood&lt; 1.5 7  4 considering (0.42857143 0.28571429 0.28571429)  
+##               234) D4MaritalStatus&lt; 3 5  2 considering (0.60000000 0.40000000 0.00000000) *
+##               235) D4MaritalStatus&gt;=3 2  0 shopping (0.00000000 0.00000000 1.00000000) *
+##            59) CleaningAttitudes_6&lt; 0.5 9  4 shopping (0.44444444 0.00000000 0.55555556)  
+##             118) CleaningAttitudes_8&gt;=0.5 2  0 considering (1.00000000 0.00000000 0.00000000) *
+##             119) CleaningAttitudes_8&lt; 0.5 7  2 shopping (0.28571429 0.00000000 0.71428571) *
+##        15) D1Gender&gt;=1.5 19  9 shopping (0.31578947 0.15789474 0.52631579)  
+##          30) CleaningAttitudes_6&lt; 0.5 6  2 considering (0.66666667 0.16666667 0.16666667) *
+##          31) CleaningAttitudes_6&gt;=0.5 13  4 shopping (0.15384615 0.15384615 0.69230769)  
+##            62) CleaningAttitudes_5&lt; 0.5 2  0 considering (1.00000000 0.00000000 0.00000000) *
+##            63) CleaningAttitudes_5&gt;=0.5 11  2 shopping (0.00000000 0.18181818 0.81818182)  
+## 
+## ...
+## and 2 more lines.</pre>
 
 </article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
 
@@ -3737,7 +3790,7 @@ wf_fit_03 |&gt;
 <pre >## # A tibble: 1 × 3
 ##   .metric  .estimator .estimate
 ##   &lt;chr&gt;    &lt;chr&gt;          &lt;dbl&gt;
-## 1 accuracy multiclass     0.690</pre>
+## 1 accuracy multiclass     0.631</pre>
 
 </article></slide><slide class=""><hgroup><h2></h2></hgroup><article >
 
@@ -3749,9 +3802,9 @@ wf_fit_03 |&gt;
 
 <pre >##              Truth
 ## Prediction    considering own shopping
-##   considering          58  10       16
-##   own                   0   0        0
-##   shopping              0   0        0</pre>
+##   considering          52  10       13
+##   own                   0   0        2
+##   shopping              6   0        1</pre>
 
 </article></slide><slide class=""><hgroup><h2>Wrapping Up</h2></hgroup><article  id="wrapping-up">
 
@@ -3778,7 +3831,9 @@ wf_fit_03 |&gt;
 
 <p><em>Artwork by <span class="cite">@allison_horst</span></em></p>
 
-</article></slide><slide class=""><hgroup><h2>Exercise 16</h2></hgroup><article  id="exercise-16">
+</article></slide><slide class=""><hgroup><h2>Exercise 14</h2></hgroup><article  id="exercise-14">
+
+<p>We’ll be using the roomba survey data for this exercise. Roomba has asked us to train a model to classify customers into two segments, one that combines <code>own</code> and <code>shopping</code>, and one for <code>considering</code>. Your task is to compare the performance of logistic regression and a decision tree to find the best model for the client.</p>
 
 <ol>
 <li>Use <code>case_when()</code> to combine the <code>own</code> and <code>shopping</code> segments into a single category.</li>

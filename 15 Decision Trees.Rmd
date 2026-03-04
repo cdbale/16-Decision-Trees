@@ -1,6 +1,6 @@
 ---
 title: "Decision Trees"
-subtitle: "MKTG 411 Marketing Analytics"
+subtitle: "MCB Consulting Group (MKTG 411)"
 output: 
   ioslides_presentation:
     widescreen: true
@@ -27,7 +27,7 @@ output:
 
 We've already spent time with *supervised learning*, a model with an outcome variable. Specifically, we dealt with *regression* and *classification*.
 
-We used supervised learning for *inference* (i.e., to understand the underlying data generating process), but now we care about *prediction*. So instead of letting our theories about the data generating process drive our selection of variables and worrying about whether our coefficient estimates are accurate, we'll need to run a *lot* of models and find which one is best for prediction.
+We used supervised learning for *inference* (i.e., to understand the underlying data generating process), but now we care about *prediction*. So instead of letting our beliefs and hypotheses about our story drive our selection of variables and worrying about whether our coefficient estimates are accurate, we'll need to run a *lot* of models and find which one is best for prediction.
 
 ## Import Data
 
@@ -37,9 +37,6 @@ Let's import and work with some new data.
 # Load packages.
 library(tidyverse)
 library(tidymodels)
-
-# Set a simulation seed.
-set.seed(42)
 ```
 
 ---
@@ -47,7 +44,7 @@ set.seed(42)
 In this unit, we'll be examining survey data from iRobot (Roomba).
 
 ```{r message=FALSE}
-roomba_survey <- read_csv(here::here("Data", "roomba_survey.csv"))
+roomba_survey <- read_csv("roomba_survey.csv")
 
 roomba_survey
 ```
@@ -90,6 +87,8 @@ roomba_survey <- roomba_survey |>
 Once again, one of the first things we need to do is split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument.
 
 ```{r}
+set.seed(42)
+
 # Split data based on segment.
 roomba_split <- initial_split(roomba_survey, prop = 0.75, strata = segment)
 ```
@@ -143,17 +142,21 @@ roomba_model <- decision_tree() |>
   set_mode("classification")
 ```
 
----
-
-Without `fit()`, the set up here is a list of instructions. Where have we seen this before?
-
-```{r}
-roomba_model
-```
-
 ## Workflows
 
-A **workflow** is a tidymodels object that combines the instructions of a recipe and a model.
+We're going to introduce another concept to help with training and evaluating our models: **workflows**.
+
+Workflows combine the following:
+
+- Our Data
+- Pre-processing/feature engineering (recipes)
+- Our Model
+
+Today, we'll see how to create a workflow that simplifies the data pre-processing, model fitting, and prediction tasks.
+
+---
+
+A **workflow** is a tidymodels object that combines the instructions of a recipe and a model. We'll start with a simple workflow that only includes our **formula** (which outlines the relationship between our outcome and explanatory variables) and our **model** - the decision tree we defined previously.
 
 ```{r}
 # Create a workflow.
@@ -186,7 +189,7 @@ wf_fit_01
 
 ## Evaluate Predictive Fit
 
-Similarly, we can evaluate predictive fit using the fitted workflow. For classification, there are a lot of possible measures of predictive fit, but accuracy is a natural one to use.
+We can evaluate predictive fit using the fitted workflow. For classification, there are a lot of possible measures of predictive fit, but accuracy is a natural one to use.
 
 ```{r}
 # Compute model accuracy.
@@ -198,7 +201,7 @@ wf_fit_01 |>
 
 ---
 
-We can also compute a confusion matrix.
+We can also compute a confusion matrix. What does this show us?
 
 ```{r}
 # Compute a confusion matrix.
@@ -210,7 +213,7 @@ wf_fit_01 |>
 
 ## Feature Engineering
 
-We can certainly do better. What if we included some demographic predictors instead? We'll still want to dummy code them.
+We can certainly do better. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
 
 ```{r}
 # Build a recipe.
@@ -218,14 +221,14 @@ roomba_recipe <- training(roomba_split) |>
   recipe(
     segment ~ D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus
   ) |>
-  step_dummy(all_nominal(), -all_outcomes())
+  step_dummy(all_nominal(), -segment)
 ```
 
-Note that we haven't used `prep()` -- that's part of executing the workflow now.
+Note that we haven't used `prep()` -- that will now be handled in the workflow.
 
 ## Update, Fit, and Evaluate
 
-We didn't have a `recipe()` before, so we had to use `add_formula()`. Let's get rid of it and update our workflow with our new recipe.
+To include a recipe in our workflow, we remove the previous `formula` and add the recipe. *Typically* we will just add a recipe to our workflow to begin with. We started with the `formula` for illustrative purposes.
 
 ```{r}
 # Update the workflow.
@@ -286,7 +289,7 @@ roomba_recipe_full <- training(roomba_split) |>
 
 ## Update the Workflow Again
 
-Notice we are updating the recipe this time.
+Create a third workflow that includes our full model. Notice we are updating the recipe this time by using the `remove_recipe()` function.
 
 ```{r}
 # Update the workflow.
@@ -328,16 +331,18 @@ wf_fit_03 |>
 
 ## Notes on Growing (Training/Fitting) a Decision Tree
 
-Workflows help with the fact that we're iterating on a lot of models as we try different predictors and changes to feature engineering. But we haven't said anything about *hyperparameters*.
+Workflows help with the fact that we're iterating on a lot of models as we try different predictors and changes to feature engineering. One of the *new* aspects of our models that we'll tweak are called *hyperparameters*. Think of these as model characteristics that determine how the model fits the data. For decision trees we have
 
 - `tree_depth` maximum depth of the tree (default is 30)
 - `min_n` minimum number of data points in a node to be split (default is 20)
 
 ---
 
+We can specify model parameters when we define the model.
+
 ```{r}
 # Specify the model, engine, and mode.
-roomba_model <- decision_tree(tree_depth = 2) |> 
+roomba_model <- decision_tree(min_n = 5) |> 
   set_engine(engine = "rpart") |> 
   set_mode("classification")
 
@@ -402,10 +407,11 @@ wf_fit_03 |>
 
 *Artwork by @allison_horst*
 
-## Exercise 16
+## Exercise 14
+
+We'll be using the roomba survey data for this exercise. Roomba has asked us to train a model to classify customers into two segments, one that combines `own` and `shopping`, and one for `considering`. Your task is to compare the performance of logistic regression and a decision tree to find the best model for the client.
 
 1. Use `case_when()` to combine the `own` and `shopping` segments into a single category.
 2. Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
 3. Try and tune the decision tree hyperparameters to improve its predictive fit.
 4. Render the Quarto document into Word and upload to Canvas.
-

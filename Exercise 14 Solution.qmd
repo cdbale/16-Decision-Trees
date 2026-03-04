@@ -1,8 +1,10 @@
 ---
-title: "Exercise 17"
-author: "Marc Dotson"
+title: "Exercise 14"
+author: "Cameron Bale"
 format: docx
 ---
+
+We'll be using the roomba survey data for this exercise. Roomba has asked us to train a model to classify customers into two segments, one that combines `own` and `shopping`, and one for `considering`. Your task is to compare the performance of logistic regression and a decision tree to find the best model for the client.
 
 1. Use `case_when()` to combine the `own` and `shopping` segments into a single category.
 2. Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
@@ -30,7 +32,7 @@ library(tidymodels)
 set.seed(42)
 
 # Import data.
-roomba_survey <- read_csv(here::here("Data", "roomba_survey.csv"))
+roomba_survey <- read_csv("roomba_survey.csv")
 
 # Wrangle S1 into segment.
 roomba_survey <- roomba_survey |> 
@@ -56,7 +58,7 @@ roomba_recipe <- training(roomba_split) |>
       CleaningAttitudes_10 + CleaningAttitudes_11 +
       D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus
   ) |>
-  step_dummy(all_nominal(), -all_outcomes())
+  step_dummy(all_nominal(), -segment)
 ```
 
 ## Logistic Regression and Decision Trees
@@ -120,7 +122,7 @@ fit_wf_dt |>
   conf_mat(truth = segment, estimate = .pred_class)
 ```
 
-Each model is providing *nearly* the same predictions.
+Each model is providing similar predictions, but the decision tree is mis-predicting some observations as own or shopping that are actually just considering.
 
 ## Hyperparameter Tuning
 
@@ -204,4 +206,3 @@ bind_rows(
 ```
 
 I can't find improved predictive fit by tuning the hyperparameters for this data, but all of this screams out for some sort of for loop or function -- maybe you've even made one!
-

@@ -1,0 +1,320 @@
+---
+title: "15-Starter-Code"
+format: docx
+editor: visual
+---
+
+## Import Data
+
+Let's import and work with some new data.
+
+```{r}
+# Load packages.
+library(tidyverse)
+library(tidymodels)
+```
+
+In this unit, we'll be examining survey data from iRobot (Roomba).
+
+```{r}
+roomba_survey <- read_csv("roomba_survey.csv")
+
+roomba_survey
+```
+
+We'll primarily focus on classifying customers into different segments. Refer to the data dictionary for variable definitions.
+
+```{r}
+# Answers to S1? This is Q1 in the survey dictionary, i.e., the first screening question.
+roomba_survey |> 
+  count(S1)
+```
+
+## Outcome Variable
+
+Going forward, we will perform feature engineering on our **outcome** variable first. In other words, we pre-process our outcome variable first, then split and pre-process our training and testing data.
+
+```{r}
+# Wrangle S1 into segment.
+roomba_survey <- roomba_survey |> 
+  rename(segment = S1) |> 
+  mutate(
+    # easier way to do multiple if-else statements!
+    segment = case_when(
+      segment == 1 ~ "own",
+      segment == 3 ~ "shopping",
+      segment == 4 ~ "considering"
+    ),
+    segment = factor(segment)
+  )
+```
+
+## Data Splitting by Strata
+
+Once again, one of the first things we need to do is split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument. This ensures that the proportion of observations in each category is consistent across our data split.
+
+```{r}
+set.seed(42)
+
+# Split data based on segment.
+roomba_split <- initial_split(roomba_survey, prop = 0.75, strata = segment)
+```
+
+## Decision Trees
+
+Set the model, engine, and *mode* (since a decision tree can do regression or classification).
+
+```{r}
+# Set the model, engine, and mode.
+roomba_model <- decision_tree() |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+```
+
+## Workflows
+
+We're going to introduce another concept to help with training and evaluating our models: **workflows**.
+
+A **workflow** is a tidymodels object that combines the instructions of a recipe and a model. We'll start with a simple workflow that only includes our **formula** (which outlines the relationship between our outcome and explanatory variables) and our **model** - the decision tree we defined previously.
+
+```{r}
+# Create a workflow.
+roomba_wf_01 <- workflow() |> 
+  add_formula(
+    segment ~ CleaningAttitudes_1 + CleaningAttitudes_2 + CleaningAttitudes_3 + 
+      CleaningAttitudes_4 + CleaningAttitudes_5 + CleaningAttitudes_6 + 
+      CleaningAttitudes_7 + CleaningAttitudes_8 + CleaningAttitudes_9 + 
+      CleaningAttitudes_10 + CleaningAttitudes_11
+  ) |> 
+  add_model(roomba_model)
+```
+
+View the workflow object.
+
+```{r}
+roomba_wf_01
+```
+
+## Fit a Workflow
+
+We can fit the workflow itself since it includes the formula and model instructions.
+
+```{r}
+# Fit a workflow.
+wf_fit_01 <- fit(roomba_wf_01, data = training(roomba_split))
+
+wf_fit_01
+```
+
+## Evaluate Predictive Fit
+
+We can evaluate predictive fit using the fitted workflow. For classification, there are a lot of possible measures of predictive fit, but accuracy is a natural one to use.
+
+```{r}
+# Compute model accuracy.
+wf_fit_01 |> 
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  accuracy(truth = segment, estimate = .pred_class)
+```
+
+We can also compute a confusion matrix. What does this show us?
+
+```{r}
+# Compute a confusion matrix.
+wf_fit_01 |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+```
+
+## Feature Engineering
+
+We can certainly do better. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
+
+```{r}
+# Build a recipe.
+roomba_recipe <- training(roomba_split) |>
+  recipe(
+    segment ~ D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus
+  ) |>
+  step_dummy(all_nominal(), -segment)
+```
+
+Note that we haven't used `prep()` -- that will now be handled in the workflow.
+
+## Update, Fit, and Evaluate
+
+To include a recipe in our workflow, we remove the previous `formula` and add the recipe. *Typically* we will just add a recipe to our workflow to begin with. We started with the `formula` for illustrative purposes.
+
+```{r}
+# Update the workflow.
+roomba_wf_02 <- roomba_wf_01 |> 
+  remove_formula() |>
+  add_recipe(roomba_recipe)
+
+roomba_wf_02
+```
+
+By fitting a workflow that includes a recipe, `prep()`, `bake()`, and `fit()` are all executed in one step.
+
+```{r}
+# Fit a second workflow.
+wf_fit_02 <- fit(roomba_wf_02, data = training(roomba_split))
+
+wf_fit_02
+```
+
+By predicting using a fitted workflow, it does `bake()` and `predict()` in one step.
+
+```{r}
+# Compute model accuracy.
+wf_fit_02 |> 
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  accuracy(truth = segment, estimate = .pred_class)
+```
+
+```{r}
+# Compute a confusion matrix.
+wf_fit_02 |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+```
+
+## Predict using Cleaning Attitudes and Demographics
+
+Now we'll combine the features from both of the previous models in a new recipe.
+
+```{r}
+# Build a new recipe.
+roomba_recipe_full <- training(roomba_split) |>
+  recipe(
+    segment ~ D1Gender + D2HomeType + D3Neighborhood + D4MaritalStatus +
+      CleaningAttitudes_1 + CleaningAttitudes_2 + CleaningAttitudes_3 + 
+      CleaningAttitudes_4 + CleaningAttitudes_5 + CleaningAttitudes_6 + 
+      CleaningAttitudes_7 + CleaningAttitudes_8 + CleaningAttitudes_9 + 
+      CleaningAttitudes_10 + CleaningAttitudes_11
+  ) |>
+  step_dummy(all_nominal(), -all_outcomes())
+```
+
+## Update the Workflow Again
+
+Create a third workflow that includes our full model. Notice we are updating the recipe this time by using the `remove_recipe()` function.
+
+```{r}
+# Update the workflow.
+roomba_wf_03 <- roomba_wf_02 |> 
+  remove_recipe() |>
+  add_recipe(roomba_recipe_full)
+
+roomba_wf_03
+```
+
+## Fit the Workflow
+
+```{r}
+# Fit the full workflow.
+wf_fit_03 <- fit(roomba_wf_03, data = training(roomba_split))
+
+wf_fit_03
+```
+
+## Evaluate Predictions from the Full Model
+
+```{r}
+# Compute model accuracy.
+wf_fit_03 |> 
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  accuracy(truth = segment, estimate = .pred_class)
+```
+
+## Confusion Matrix for the Full Model
+
+```{r}
+# Compute a confusion matrix.
+wf_fit_03 |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+```
+
+## Hyperparameter Tuning
+
+Many models have hyperparameters. These are different from the parameters we're used to thinking about. Rather than tell us about our data story, these parameters control characteristics of the model and ultimately determine how it fits the data. For decision trees, we can control the maximum depth and the number of points that must be in a node for it to be split.
+
+- `tree_depth` maximum depth of the tree (default is 30)
+- `min_n` minimum number of data points in a node to be split (default is 20)
+
+We can specify model hyperparameters when we define the model.
+
+```{r}
+# Specify the model, engine, and mode.
+roomba_model <- decision_tree(min_n = 5) |> 
+  set_engine(engine = "rpart") |> 
+  set_mode("classification")
+
+roomba_model
+```
+
+```{r}
+# Update the workflow.
+roomba_wf_03 <- roomba_wf_03 |> 
+  update_model(roomba_model)
+
+roomba_wf_03
+```
+
+```{r}
+# Fit the workflow.
+wf_fit_03 <- fit(roomba_wf_03, data = training(roomba_split))
+
+wf_fit_03
+```
+
+```{r}
+# Compute model accuracy.
+wf_fit_03 |> 
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  accuracy(truth = segment, estimate = .pred_class)
+```
+
+```{r}
+# Compute a confusion matrix.
+wf_fit_03 |>
+  predict(new_data = testing(roomba_split)) |>
+  bind_cols(testing(roomba_split)) |>
+  conf_mat(truth = segment, estimate = .pred_class)
+```
+
+## Wrapping Up
+
+*Summary*
+
+- Demonstrated splitting data by strata.
+- Discussed decision trees.
+- Walked through building, using, and updating workflows.
+- Tried a *little* hyperparameter tuning.
+
+*Next Time*
+
+- Why have one decision tree when you can have a forest?
+
+*Supplementary Material*
+
+- *Tidy Modeling with R* Chapter 7
+
+*Artwork by @allison_horst*
+
+## Exercise 14
+
+We'll be using the roomba survey data for this exercise. Roomba has asked us to train a model to classify customers into two segments, one that combines `own` and `shopping`, and one for `considering`. Your task is to compare the performance of logistic regression and a decision tree to find the best model for the client.
+
+1. Use `case_when()` to combine the `own` and `shopping` segments into a single category.
+2. Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
+3. Try and tune the decision tree hyperparameters to improve its predictive fit.
+4. Render the Quarto document into Word and upload to Canvas.
