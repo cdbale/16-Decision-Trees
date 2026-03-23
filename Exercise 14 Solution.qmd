@@ -122,7 +122,7 @@ fit_wf_dt |>
   conf_mat(truth = segment, estimate = .pred_class)
 ```
 
-Each model is providing similar predictions, but the decision tree is mis-predicting some observations as own or shopping that are actually just considering.
+Each model is providing similar predictions. The decision tree is mis-predicting more observations as own or shopping that are actually just considering relative to the logistic regression. The decision tree did correctly predict a greater number of own or shopping observations than the logistic regression.
 
 ## Hyperparameter Tuning
 

@@ -51,7 +51,7 @@ roomba_survey <- roomba_survey |>
 
 ## Data Splitting by Strata
 
-Once again, one of the first things we need to do is split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument. This ensures that the proportion of observations in each category is consistent across our data split.
+Next, we split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument. This ensures that the proportion of observations in each category is consistent across our data split.
 
 ```{r}
 set.seed(42)
@@ -130,7 +130,7 @@ wf_fit_01 |>
 
 ## Feature Engineering
 
-We can certainly do better. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
+Let's try to improve our predictions. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
 
 ```{r}
 # Build a recipe.
@@ -246,8 +246,8 @@ wf_fit_03 |>
 
 Many models have hyperparameters. These are different from the parameters we're used to thinking about. Rather than tell us about our data story, these parameters control characteristics of the model and ultimately determine how it fits the data. For decision trees, we can control the maximum depth and the number of points that must be in a node for it to be split.
 
-- `tree_depth` maximum depth of the tree (default is 30)
-- `min_n` minimum number of data points in a node to be split (default is 20)
+-   `tree_depth` maximum depth of the tree (default is 30)
+-   `min_n` minimum number of data points in a node to be split (default is 20)
 
 We can specify model hyperparameters when we define the model.
 
@@ -295,18 +295,18 @@ wf_fit_03 |>
 
 *Summary*
 
-- Demonstrated splitting data by strata.
-- Discussed decision trees.
-- Walked through building, using, and updating workflows.
-- Tried a *little* hyperparameter tuning.
+-   Demonstrated splitting data by strata.
+-   Discussed decision trees.
+-   Walked through building, using, and updating workflows.
+-   Tried a *little* hyperparameter tuning.
 
 *Next Time*
 
-- Why have one decision tree when you can have a forest?
+-   Why have one decision tree when you can have a forest?
 
 *Supplementary Material*
 
-- *Tidy Modeling with R* Chapter 7
+-   *Tidy Modeling with R* Chapter 7
 
 *Artwork by @allison_horst*
 
@@ -314,7 +314,7 @@ wf_fit_03 |>
 
 We'll be using the roomba survey data for this exercise. Roomba has asked us to train a model to classify customers into two segments, one that combines `own` and `shopping`, and one for `considering`. Your task is to compare the performance of logistic regression and a decision tree to find the best model for the client.
 
-1. Use `case_when()` to combine the `own` and `shopping` segments into a single category.
-2. Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
-3. Try and tune the decision tree hyperparameters to improve its predictive fit.
-4. Render the Quarto document into Word and upload to Canvas.
+1.  Use `case_when()` to combine the `own` and `shopping` segments into a single category.
+2.  Use workflows to combine the cleaning attitudes and demographics we've used in class and fit both a logistic regression and a decision tree. Which one has better predictive fit?
+3.  Try and tune the decision tree hyperparameters to improve its predictive fit.
+4.  Render the Quarto document into Word and upload to Canvas.

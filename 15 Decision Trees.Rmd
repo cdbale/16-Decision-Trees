@@ -25,9 +25,14 @@ output:
 
 ## Supervised Learning and Prediction
 
-We've already spent time with *supervised learning*, a model with an outcome variable. Specifically, we dealt with *regression* and *classification*.
+Today, we will be doing *supervised learning* with the goal of *prediction*. So instead of letting our beliefs and hypotheses about our story drive our selection of variables and worrying about whether our coefficient estimates are accurate, we'll need to run a *lot* of models and find which one is best for predicting the outcome we care about.
 
-We used supervised learning for *inference* (i.e., to understand the underlying data generating process), but now we care about *prediction*. So instead of letting our beliefs and hypotheses about our story drive our selection of variables and worrying about whether our coefficient estimates are accurate, we'll need to run a *lot* of models and find which one is best for prediction.
+## How Do We know Whether We Care About Inference or Prediction?
+
+- If a model is used to make operational decisions? --> *Prediction*.
+- If a model is used to explain behavior or outcomes, or allow us to intervene in a process? --> *Inference*.
+
+What are some examples of prediction-focused use cases?
 
 ## Import Data
 
@@ -84,7 +89,7 @@ roomba_survey <- roomba_survey |>
 
 ## Data Splitting by Strata
 
-Once again, one of the first things we need to do is split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument.
+Next, we need to split the data. To be sure that we don't end up with testing data that doesn't include one of the categories in our outcome variable, use the `strata` argument.
 
 ```{r}
 set.seed(42)
@@ -93,7 +98,7 @@ set.seed(42)
 roomba_split <- initial_split(roomba_survey, prop = 0.75, strata = segment)
 ```
 
-How could you check and see that this worked? (Hint: when using the `strata` argument, the splitting proportion is applied to each stratum separately).
+When using the `strata` argument, the splitting proportion is applied to each stratum separately.
 
 ## Decision Trees
 
@@ -104,8 +109,6 @@ Let's use a **decision tree**.
 - Instead of fitting a line, split the data based on a decision rule using one of the predictors.
 - Keep adding decision rules based on more predictors to split the data further.
 - Use the resulting regions to classify (or minimize the residual sum of squares if its regression).
-
-Clear as mud?
 
 ---
 
@@ -213,7 +216,7 @@ wf_fit_01 |>
 
 ## Feature Engineering
 
-We can certainly do better. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
+Let's try to improve our predictions. What if we included some demographic predictors instead? We'll still want to dummy code them. Let's build a recipe that pre-processes our categorical variables.
 
 ```{r}
 # Build a recipe.
